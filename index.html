@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тренажер: Работа с CRM</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #1a1a1a;
+            color: #2d2d2d;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        /* === КОНТЕЙНЕР — ГИБКИЙ, НЕ ФИКСИРОВАННЫЙ === */
+        .slide-container {
+            width: 100%;
+            max-width: 1280px;
+            background: #f5f3f1;
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+            position: relative;
+        }
+
+        /* === HEADER === */
+        .header {
+            padding: 14px 24px;
+            background: #ffffff;
+            border-bottom: 1px solid #e8e6e4;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .logo {
+            color: #e63946;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -1px;
+        }
+
+        .logo span { color: #ff6b6b; }
+
+        .task-label {
+            background: #f0f8fa;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #1a5c6a;
+        }
+
+        /* === MAIN CONTENT === */
+        .main-content {
+            flex: 1;
+            padding: 16px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .top-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .game-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #2d2024;
+        }
+
+        .game-subtitle {
+            font-size: 12px;
+            color: #666;
+        }
+
+        /* === ПРОГРЕСС === */
+        .progress-wrap {
+            width: 200px;
+        }
+
+        .progress-label {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .progress-bar-bg {
+            height: 5px;
+            background: #e8e6e4;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #2a7a8b, #3d9aa8);
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.4s ease;
+        }
+
+        /* === ЗОНЫ — ГИБКАЯ СЕТКА === */
+        .zones-row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+        }
+
+        .zone {
+            background: #ffffff;
+            border: 2px solid #e8e6e4;
+            border-radius: 8px;
+            padding: 8px;
+            min-height: 90px;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .zone.drag-over {
+            border-color: #2a7a8b;
+            background: #f0f8fa;
+            box-shadow: 0 0 0 2px rgba(42, 122, 139, 0.1);
+        }
+
+        .zone.correct {
+            border-color: #2ecc71;
+            background: #f0faf4;
+        }
+
+        .zone-header {
+            font-size: 11px;
+            font-weight: 600;
+            text-align: center;
+            padding: 5px 2px;
+            background: #f5f3f1;
+            border-radius: 5px;
+            margin-bottom: 5px;
+            color: #2d2d2d;
+            line-height: 1.2;
+        }
+
+        .zone-content {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            justify-content: center;
+            align-items: flex-start;
+            flex: 1;
+        }
+
+        /* === КАРТОЧКИ — КАК В РАБОЧЕМ КОДЕ === */
+        .card {
+            background: linear-gradient(135deg, #ffffff, #f9f9f9);
+            border: 1.5px solid #2a7a8b;
+            border-radius: 6px;
+            padding: 7px 9px;
+            cursor: grab;
+            font-size: 11px;
+            font-weight: 500;
+            text-align: center;
+            transition: all 0.2s ease;
+            color: #2d2d2d;
+            user-select: none;
+            max-width: 200px;
+            line-height: 1.25;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .card:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 9px rgba(42, 122, 139, 0.12);
+            border-color: #3d9aa8;
+        }
+
+        .card:active { cursor: grabbing; }
+
+        .card.placed {
+            background: linear-gradient(135deg, #f0faf4, #e0f5e8);
+            border-color: #2ecc71;
+            cursor: default;
+            font-size: 10px;
+            padding: 5px 8px;
+            box-shadow: 0 2px 5px rgba(46, 204, 113, 0.15);
+            animation: placeCard 0.3s ease;
+        }
+
+        @keyframes placeCard {
+            0% { transform: scale(1.15); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .card.placed:hover { transform: none; }
+
+        /* === ПУЛ КАРТОЧЕК === */
+        .cards-pool {
+            background: #ffffff;
+            border: 2px solid #e8e6e4;
+            border-radius: 8px;
+            padding: 10px 12px;
+        }
+
+        .pool-header {
+            font-size: 12px;
+            font-weight: 600;
+            color: #2d2d2d;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .cards-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* === ОБРАТНАЯ СВЯЗЬ — FIXED, КАК В РАБОЧЕМ === */
+        .feedback {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(30px);
+            background: #ffffff;
+            border: 2px solid;
+            border-radius: 10px;
+            padding: 10px 24px;
+            font-size: 13px;
+            font-weight: 600;
+            opacity: 0;
+            transition: all 0.25s ease;
+            z-index: 1000;
+            text-align: center;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            pointer-events: none;
+            max-width: 400px;
+        }
+
+        .feedback.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .feedback.success {
+            border-color: #2ecc71;
+            color: #1a6b3c;
+            background: #f0faf4;
+        }
+
+        .feedback.error {
+            border-color: #e63946;
+            color: #8b2020;
+            background: #fef0f0;
+        }
+
+        /* === МОДАЛЬНОЕ ОКНО — FIXED, FULLSCREEN === */
+        .intro-modal {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(26, 26, 26, 0.96);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            padding: 20px;
+        }
+
+        .intro-modal.hidden { display: none; }
+
+        .intro-content {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 28px;
+            max-width: 640px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+            animation: modalFadeIn 0.4s ease;
+        }
+
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .intro-icon { font-size: 44px; margin-bottom: 14px; }
+
+        .intro-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #2d2024;
+            margin-bottom: 16px;
+        }
+
+        .intro-text {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #555;
+            text-align: left;
+            margin-bottom: 14px;
+        }
+
+        .intro-text strong { color: #2d2d2d; font-weight: 600; }
+        .intro-text ul { margin-left: 20px; margin-top: 6px; }
+        .intro-text li { margin-bottom: 4px; }
+
+        .intro-hint {
+            background: #f0f8fa;
+            border-left: 3px solid #2a7a8b;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #1a5c6a;
+            text-align: left;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .btn-start {
+            font-family: 'Inter', sans-serif;
+            padding: 12px 40px;
+            font-size: 15px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #2a7a8b, #3d9aa8);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.25s;
+            box-shadow: 0 3px 10px rgba(42, 122, 139, 0.2);
+        }
+
+        .btn-start:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 16px rgba(42, 122, 139, 0.3);
+        }
+
+        /* === ЭКРАН ЗАВЕРШЕНИЯ — FIXED, FULLSCREEN === */
+        .completion-screen {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(26, 26, 26, 0.98);
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            text-align: center;
+            padding: 30px;
+        }
+
+        .completion-icon {
+            width: 80px; height: 80px;
+            background: #ffffff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            margin-bottom: 24px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        }
+
+        .completion-screen h2 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 14px;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        .completion-screen p {
+            font-size: 15px;
+            color: #d0d0d0;
+            margin-bottom: 10px;
+            line-height: 1.5;
+            max-width: 520px;
+        }
+
+        .completion-hint {
+            background: #ffffff;
+            border-left: 4px solid #2a7a8b;
+            padding: 16px 24px;
+            border-radius: 8px;
+            margin-top: 28px;
+            font-size: 14px;
+            color: #2d2d2d;
+            text-align: left;
+            max-width: 500px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+        }
+
+        .completion-hint strong { color: #1a5c6a; }
+
+        /* === АНИМАЦИЯ ОШИБКИ === */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-6px); }
+            75% { transform: translateX(6px); }
+        }
+        .shake { animation: shake 0.4s ease; }
+
+        /* === АДАПТИВ === */
+        @media (max-width: 1100px) {
+            .zones-row { grid-template-columns: repeat(3, 1fr); }
+            .zone:nth-child(4), .zone:nth-child(5) { grid-column: span 1; }
+        }
+        @media (max-width: 768px) {
+            .zones-row { grid-template-columns: repeat(2, 1fr); }
+            .zone { min-height: 80px; }
+            .card { font-size: 10px; padding: 6px 8px; max-width: 160px; }
+            .intro-content { padding: 24px; }
+            .intro-title { font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="slide-container">
+        <div class="header">
+            <div class="logo">eO<span>s</span></div>
+            <div class="task-label">Подготовка к переговорам</div>
+        </div>
+
+        <div class="main-content">
+            <div class="top-row">
+                <div>
+                    <div class="game-title">Анализ кейса: работа с CRM</div>
+                    <div class="game-subtitle">Распределите данные по вкладкам</div>
+                </div>
+                <div class="progress-wrap">
+                    <div class="progress-label">
+                        <span>Прогресс</span>
+                        <span id="progress-text">0 / 12</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar" id="progress-bar"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="zones-row">
+                <div class="zone" data-zone="general">
+                    <div class="zone-header">📁 Общая информация</div>
+                    <div class="zone-content"></div>
+                </div>
+                <div class="zone" data-zone="notes">
+                    <div class="zone-header">📝 Примечания</div>
+                    <div class="zone-content"></div>
+                </div>
+                <div class="zone" data-zone="docs">
+                    <div class="zone-header">📄 Документы</div>
+                    <div class="zone-content"></div>
+                </div>
+                <div class="zone" data-zone="finance">
+                    <div class="zone-header">💰 Финансы</div>
+                    <div class="zone-content"></div>
+                </div>
+                <div class="zone" data-zone="fssp">
+                    <div class="zone-header">⚖️ Исполнит. производство</div>
+                    <div class="zone-content"></div>
+                </div>
+            </div>
+
+            <div class="cards-pool">
+                <div class="pool-header">📋 Данные для распределения</div>
+                <div class="cards-container" id="cards-pool"></div>
+            </div>
+
+            <div class="feedback" id="feedback"></div>
+        </div>
+
+        <!-- Intro Modal -->
+        <div class="intro-modal" id="introModal">
+            <div class="intro-content">
+                <div class="intro-icon">📋</div>
+                <h1 class="intro-title">Работа с CRM: распределение данных</h1>
+                
+                <div class="intro-text">
+                    <p><strong>Просмотр CRM — это первичная подготовка к звонку.</strong></p>
+                    <br>
+                    <p>Перед началом переговоров необходимо:</p>
+                    <ul>
+                        <li>Посмотреть историю взаимодействия с должником</li>
+                        <li>Изучить информацию по кредиту</li>
+                        <li>Проверить, поступают ли платежи</li>
+                    </ul>
+                    <br>
+                    <p><strong>Задача:</strong> Перетащите каждую карточку в ту вкладку, где эта информация хранится.</p>
+                </div>
+
+                <div class="intro-hint">
+                    💡 При правильном ответе вы услышите сигнал и увидите подтверждение.
+                </div>
+
+                <button class="btn-start" onclick="startGame()">Начать упражнение</button>
+            </div>
+        </div>
+
+        <!-- Completion Screen -->
+        <div class="completion-screen" id="completion">
+            <div class="completion-icon">✓</div>
+            <h2>Отличная работа!</h2>
+            <p>Все данные успешно распределены по вкладкам CRM.</p>
+            <p>Вы отработали навык первичной подготовки к переговорам.</p>
+            
+            <div class="completion-hint">
+                <strong>➜ Следующий шаг:</strong> Нажмите кнопку <strong>«Далее»</strong> в плеере курса, чтобы продолжить изучение материала.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // === ЗВУКИ ===
+        let audioContext = null;
+
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSuccessSound() {
+            initAudio();
+            const now = audioContext.currentTime;
+            [523.25, 659.25, 783.99].forEach((freq, i) => {
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                osc.connect(gain);
+                gain.connect(audioContext.destination);
+                osc.frequency.value = freq;
+                osc.type = 'sine';
+                gain.gain.setValueAtTime(0.1, now + i * 0.08);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.08 + 0.2);
+                osc.start(now + i * 0.08);
+                osc.stop(now + i * 0.08 + 0.2);
+            });
+        }
+
+        function playErrorSound() {
+            initAudio();
+            const now = audioContext.currentTime;
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+            osc.frequency.setValueAtTime(180, now);
+            osc.frequency.exponentialRampToValueAtTime(90, now + 0.15);
+            osc.type = 'triangle';
+            gain.gain.setValueAtTime(0.12, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+            osc.start(now);
+            osc.stop(now + 0.15);
+        }
+
+        function startGame() {
+            document.getElementById('introModal').classList.add('hidden');
+            initAudio();
+            initGame();
+        }
+
+        // === ДАННЫЕ ===
+        const itemsData = [
+            { id: 1, text: "Кредит выдан в 2011 году", zone: "general" },
+            { id: 2, text: "Должник сменил фамилию", zone: "general" },
+            { id: 3, text: "Дата последнего платежа по кредиту 20.02.2013", zone: "general" },
+            { id: 4, text: "Результат звонка: «трубку не взял»", zone: "notes" },
+            { id: 5, text: "Должник отказался от взаимодействия", zone: "notes" },
+            { id: 6, text: "Анкета заемщика (работа: учитель)", zone: "docs" },
+            { id: 7, text: "Письмо: «Не проживаю по адресу 8 лет»", zone: "docs" },
+            { id: 8, text: "Поступление 5000 руб.", zone: "finance" },
+            { id: 9, text: "Источник платежа ССП", zone: "finance" },
+            { id: 10, text: "Регулярность платежей", zone: "finance" },
+            { id: 11, text: "Постановление о взыскании на пенсию", zone: "fssp" },
+            { id: 12, text: "Количество активных ИП: 3", zone: "fssp" }
+        ];
+
+        const zoneNames = {
+            "general": "Общая информация",
+            "notes": "Примечания",
+            "docs": "Документы",
+            "finance": "Финансы",
+            "fssp": "Исполнит. производство"
+        };
+
+        let itemsPlaced = 0;
+        const totalItems = itemsData.length;
+
+        function initGame() {
+            const shuffledItems = [...itemsData].sort(() => Math.random() - 0.5);
+            const pool = document.getElementById('cards-pool');
+            shuffledItems.forEach(item => {
+                const card = createCard(item);
+                pool.appendChild(card);
+            });
+            document.querySelectorAll('.zone').forEach(zone => {
+                zone.addEventListener('dragover', dragOver);
+                zone.addEventListener('dragleave', dragLeave);
+                zone.addEventListener('drop', drop);
+            });
+        }
+
+        function createCard(item) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.draggable = true;
+            card.id = `item-${item.id}`;
+            card.textContent = item.text;
+            card.dataset.zone = item.zone;
+            card.addEventListener('dragstart', dragStart);
+            return card;
+        }
+
+        function dragStart(e) {
+            e.dataTransfer.setData('text/plain', e.target.id);
+            e.dataTransfer.setData('zone', e.target.dataset.zone);
+            setTimeout(() => e.target.style.opacity = '0.5', 0);
+        }
+
+        function dragOver(e) {
+            e.preventDefault();
+            const zone = e.target.closest('.zone');
+            if (zone) zone.classList.add('drag-over');
+        }
+
+        function dragLeave(e) {
+            const zone = e.target.closest('.zone');
+            if (zone) zone.classList.remove('drag-over');
+        }
+
+        function drop(e) {
+            e.preventDefault();
+            const zone = e.target.closest('.zone');
+            if (!zone) return;
+            zone.classList.remove('drag-over');
+            const itemId = e.dataTransfer.getData('text/plain');
+            const itemZone = e.dataTransfer.getData('zone');
+            const card = document.getElementById(itemId);
+            if (!card) return;
+            card.style.opacity = '1';
+            if (itemZone === zone.dataset.zone) {
+                handleSuccess(card, zone);
+            } else {
+                handleError(card);
+            }
+        }
+
+        function handleSuccess(card, zone) {
+            card.classList.add('placed');
+            card.draggable = false;
+            zone.querySelector('.zone-content').appendChild(card);
+            zone.classList.add('correct');
+            playSuccessSound();
+            showFeedback(`✓ Верно: ${zoneNames[zone.dataset.zone]}`, 'success');
+            itemsPlaced++;
+            updateProgress();
+            if (itemsPlaced === totalItems) {
+                setTimeout(() => {
+                    document.getElementById('completion').style.display = 'flex';
+                    playSuccessSound();
+                }, 600);
+            }
+        }
+
+        function handleError(card) {
+            playErrorSound();
+            showFeedback('✗ Неверная вкладка. Попробуйте ещё раз.', 'error');
+            card.classList.add('shake');
+            setTimeout(() => card.classList.remove('shake'), 400);
+        }
+
+        function showFeedback(text, type) {
+            const fb = document.getElementById('feedback');
+            fb.textContent = text;
+            fb.className = `feedback visible ${type}`;
+            setTimeout(() => fb.classList.remove('visible'), 2000);
+        }
+
+        function updateProgress() {
+            const pct = (itemsPlaced / totalItems) * 100;
+            document.getElementById('progress-bar').style.width = pct + '%';
+            document.getElementById('progress-text').textContent = `${itemsPlaced} / ${totalItems}`;
+        }
+    </script>
+</body>
+</html>
